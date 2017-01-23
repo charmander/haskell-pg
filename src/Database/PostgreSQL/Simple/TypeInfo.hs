@@ -43,7 +43,7 @@ import                Database.PostgreSQL.Simple.TypeInfo.Types
 import                Database.PostgreSQL.Simple.TypeInfo.Static
 
 -- | Returns the metadata of the type with a particular oid.  To find
---   this data, 'getTypeInfo' first consults postgresql-simple's
+--   this data, 'getTypeInfo' first consults pg's
 --   built-in 'staticTypeInfo' table,  then checks  the connection's
 --   typeinfo cache.   Finally,  the database's 'pg_type' table will
 --   be queried only if necessary,  and the result will be stored

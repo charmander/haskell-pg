@@ -16,7 +16,7 @@
 -- better for `FromField` to use the `typeinfo` operator that works for
 -- any type,  whether or not it is in this module.
 --
--- `typeinfo` works because postgresql-simple will dynamically query
+-- `typeinfo` works because pg will dynamically query
 -- the pg_types table the first time it receives a type OID it doesn't
 -- know about.   It then constructs a TypeInfo record and stores it in
 -- a per-connection cache for later use.
@@ -335,7 +335,7 @@ renderFile byOid byName names = ([longstring|
 -- Stability:   experimental
 --
 -- This module contains portions of the @pg_type@ table that are relevant
--- to postgresql-simple and are believed to not change between PostgreSQL
+-- to pg and are believed to not change between PostgreSQL
 -- versions.
 --
 ------------------------------------------------------------------------------

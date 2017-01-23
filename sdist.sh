@@ -5,7 +5,7 @@ echo
 
 cat <<HEADER > CHANGELOG.md
 For the full changelog, see
-<https://github.com/lpsmith/postgresql-simple/blob/master/CHANGES.md>
+<https://github.com/charmander/haskell-pg/blob/master/CHANGES.md>
 
 HEADER
 
@@ -16,10 +16,10 @@ rm -f ./dist/*.tar
 rm -f ./dist/*.tar.gz
 cabal sdist
 cd dist
-wc *.tar.gz
+ls -lh *.tar.gz
 gunzip *.gz
-wc *.tar
+ls -lh *.tar
 zopfli *.tar
-wc *.tar.gz
+ls -lh *.tar.gz
 cd ..
 rm -f ./dist/*.tar

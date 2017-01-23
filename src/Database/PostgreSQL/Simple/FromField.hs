@@ -42,8 +42,8 @@ and the possibility of receiving these special values from the backend,
 stick with 'Rational'.
 
 Because 'FromField' is a typeclass,  one may provide conversions to
-additional Haskell types without modifying postgresql-simple.  This is
-particularly useful for supporting PostgreSQL types that postgresql-simple
+additional Haskell types without modifying pg.  This is
+particularly useful for supporting PostgreSQL types that pg
 does not support out-of-box.  Here's an example of what such an instance
 might look like for a UUID type that implements the @Read@ class:
 
@@ -70,7 +70,7 @@ Note that because PostgreSQL's @uuid@ type is built into postgres and is
 not provided by an extension,  the 'typeOid' of @uuid@ does not change and
 thus we can examine it directly.  One could hard-code the type oid,  or
 obtain it by other means, but in this case we simply pull it out of the
-static table provided by postgresql-simple.
+static table provided by pg.
 
 On the other hand if the type is provided by an extension,  such as
 @PostGIS@ or @hstore@,  then the 'typeOid' is not stable and can vary from
@@ -209,9 +209,9 @@ class FromField a where
 --   extensions to PostgreSQL.
 --
 --   More concretely,  it returns the @typname@ column associated with the
---   type oid in the @pg_type@ table.  First, postgresql-simple will check
+--   type oid in the @pg_type@ table.  First, pg will check
 --   the built-in, static table.   If the type oid is not there,
---   postgresql-simple will check a per-connection cache,  and then
+--   pg will check a per-connection cache,  and then
 --   finally query the database's meta-schema.
 
 typename :: Field -> Conversion ByteString

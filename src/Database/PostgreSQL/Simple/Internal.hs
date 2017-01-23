@@ -10,7 +10,7 @@
 -- Stability:   experimental
 --
 -- Internal bits.  This interface is less stable and can change at any time.
--- In particular this means that while the rest of the postgresql-simple
+-- In particular this means that while the rest of the pg
 -- package endeavors to follow the package versioning policy,  this module
 -- does not.  Also, at the moment there are things in here that aren't
 -- particularly internal and are exported elsewhere;  these will eventually

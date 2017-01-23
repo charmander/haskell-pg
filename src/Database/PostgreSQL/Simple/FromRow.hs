@@ -53,7 +53,7 @@ import           GHC.Generics
 -- | A collection type that can be converted from a sequence of fields.
 -- Instances are provided for tuples up to 10 elements and lists of any length.
 --
--- Note that instances can be defined outside of postgresql-simple,  which is
+-- Note that instances can be defined outside of pg,  which is
 -- often useful.   For example, here's an instance for a user-defined pair:
 --
 -- @
@@ -68,7 +68,7 @@ import           GHC.Generics
 -- exception will be thrown.
 --
 -- Note that 'field' evaluates its result to WHNF, so the caveats listed in
--- mysql-simple and very early versions of postgresql-simple no longer apply.
+-- mysql-simple and very early versions of pg no longer apply.
 -- Instead, look at the caveats associated with user-defined implementations
 -- of 'fromField'.
 

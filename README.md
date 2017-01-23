@@ -1,7 +1,7 @@
-[![Continuous Integration status][status-png]][status]
-[![Hackage page (downloads and API reference)][hackage-png]][hackage]
+[![Continuous Integration status][status-image]][status]
+[![Hackage page (downloads and API reference)][hackage-image]][hackage]
 
- [status-png]: https://api.travis-ci.org/lpsmith/postgresql-simple.svg
- [status]: http://travis-ci.org/lpsmith/postgresql-simple?branch=master
- [hackage-png]: http://img.shields.io/hackage/v/postgresql-simple.svg
- [hackage]: http://hackage.haskell.org/package/postgresql-simple
+ [status-image]: https://api.travis-ci.org/charmander/haskell-pg.svg
+ [status]: https://travis-ci.org/charmander/haskell-pg?branch=master
+ [hackage-image]: https://img.shields.io/hackage/v/pg.svg
+ [hackage]: https://hackage.haskell.org/package/pg

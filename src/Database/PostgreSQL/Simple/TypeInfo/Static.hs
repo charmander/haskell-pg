@@ -7,7 +7,7 @@
 -- Stability:   experimental
 --
 -- This module contains portions of the @pg_type@ table that are relevant
--- to postgresql-simple and are believed to not change between PostgreSQL
+-- to pg and are believed to not change between PostgreSQL
 -- versions.
 --
 ------------------------------------------------------------------------------

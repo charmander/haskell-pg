@@ -554,7 +554,7 @@ doFold FoldOptions{..} parser conn _template q a0 f = do
          -- the library,  as we aren't using libpq asynchronously.
          -- However,  it could occur in future incarnations of
          -- this library or if client code uses the Internal module
-         -- to use raw libpq commands on postgresql-simple connections.
+         -- to use raw libpq commands on pg connections.
       PQ.TransInError -> fail "foldWithOpts FIXME:  PQ.TransInError"
          -- This should be turned into a better error message.
          -- It is probably a bad idea to automatically roll

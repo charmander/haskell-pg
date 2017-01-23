@@ -10,7 +10,7 @@ infinity,  as well as some functions for converting to and from strings.
 
 Also, this module also contains commentary regarding postgresql's timestamp
 types,  civil timekeeping in general,  and how it relates to
-postgresql-simple. You can read more about PostgreSQL's date and time types
+pg. You can read more about PostgreSQL's date and time types
 at <https://www.postgresql.org/docs/9.5/static/datatype-datetime.html>,
 and the IANA time zone database at <https://en.wikipedia.org/wiki/Tz_database>.
 
@@ -87,11 +87,11 @@ Note that while some of the information contained in the IANA TZ database
 is a bit of a standardized fiction, the conversion from UTC time to a
 (local time, offset) pair in a particular time zone is always unambiguous,
 and the result can always be unambiguously converted back to UTC.  Thus,
-postgresql-simple can interpret such a result as a 'Data.Time.ZonedTime',
+pg can interpret such a result as a 'Data.Time.ZonedTime',
 or use the offset to convert back to 'Data.Time.UTCTime'.
 
 By contrast, the @timestamp@ type ignores any offsets provided to it,
-and never sends back an offset.   Thus,  postgresql-simple equates this
+and never sends back an offset.   Thus,  pg equates this
 with 'Data.Time.LocalTime',  which has no concept of an offset.  One can
 convert between @timestamptz@ and @timestamp@ using the @AT TIME ZONE@
 operator, whose semantics also demonstrates that @timestamptz@ is
@@ -108,7 +108,7 @@ connection initialization, the libpq client checks for the existence of
 the @PGTZ@  environment variable, and if it exists, modifies @timezone@
 accordingly.
 
-With a few caveats,  postgresql-simple is designed so that you can both send
+With a few caveats,  pg is designed so that you can both send
 and receive timestamps with the server and get a correct result,  no matter
 what the @timezone@ setting is.  But it is important to understand the caveats:
 
@@ -194,14 +194,14 @@ sometimes even political allegiances within a single location.
 Timestamps BCE are not supported.  For example, PostgreSQL
 will emit \"@0045-01-01 BC@\" for the first proleptic Gregorian day of
 the year the Roman Empire adopted the Julian Calendar,  but
-postgresql-simple does not (yet?) have the ability to either parse or
+pg does not (yet?) have the ability to either parse or
 generate this syntax.   Unfortunately this syntax isn't convenient to
 print or especially parse.
 
 Also, postgresql itself cannot parse or print dates before @4714-11-24 BC@,
 which is the Julian date on the proleptic Gregorian Calendar.   Although
 postgresql's timestamp types are perfectly capable of representing timestamps
-nearly 300,000 years in the past,  using this would require postgresql-simple
+nearly 300,000 years in the past,  using this would require pg
 and other client programs to support binary parameters and results.
 
 Dealing with years BCE is also complicated slightly by the fact that

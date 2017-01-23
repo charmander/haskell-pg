@@ -36,12 +36,6 @@ module Database.PostgreSQL.Simple
     -- ** Substituting a single parameter
     -- $only_param
 
-    -- ** Modifying multiple rows at once
-    -- $many
-
-    -- ** @RETURNING@: modifications that return results
-    -- $returning
-
     -- * Extracting results
     -- $result
 
@@ -88,7 +82,6 @@ module Database.PostgreSQL.Simple
     , foldWithOptions_
     , forEach
     , forEach_
-    , returning
     -- ** Queries that stream results taking a parser as an argument
     , foldWith
     , foldWithOptionsAndParser
@@ -96,11 +89,9 @@ module Database.PostgreSQL.Simple
     , foldWithOptionsAndParser_
     , forEachWith
     , forEachWith_
-    , returningWith
     -- * Statements that do not return results
     , execute
     , execute_
-    , executeMany
 --    , Base.insertID
     -- * Transaction handling
     , withTransaction
@@ -110,18 +101,16 @@ module Database.PostgreSQL.Simple
     , commit
     , rollback
     -- * Helper functions
-    , formatMany
     , formatQuery
     ) where
 
 import           Data.ByteString.Builder
-                   ( Builder, byteString, char8, intDec )
+                   ( Builder, byteString, intDec )
 import           Control.Applicative ((<$>))
 import           Control.Exception as E
 import           Control.Monad (unless)
 import           Data.ByteString (ByteString)
 import           Data.Int (Int64)
-import           Data.List (intersperse)
 import           Data.Monoid (mconcat)
 import           Database.PostgreSQL.Simple.Compat ( (<>), toByteString )
 import           Database.PostgreSQL.Simple.FromField (ResultError(..))
@@ -156,127 +145,6 @@ formatQuery conn q@(Query template) qs
     | otherwise = toByteString <$> buildQuery conn q template xs
   where xs = toRow qs
 
--- | Format a query string with a variable number of rows.
---
--- This function is exposed to help with debugging and logging. Do not
--- use it to prepare queries for execution.
---
--- The query string must contain exactly one substitution group,
--- identified by the SQL keyword \"@VALUES@\" (case insensitive)
--- followed by an \"@(@\" character, a series of one or more \"@?@\"
--- characters separated by commas, and a \"@)@\" character. White
--- space in a substitution group is permitted.
---
--- Throws 'FormatError' if the query string could not be formatted
--- correctly.
-formatMany :: (ToRow q) => Connection -> Query -> [q] -> IO ByteString
-formatMany _ q [] = fmtError "no rows supplied" q []
-formatMany conn q@(Query template) qs = do
-  case parseTemplate template of
-    Just (before, qbits, after) -> do
-      bs <- mapM (buildQuery conn q qbits . toRow) qs
-      return . toByteString . mconcat $ byteString before :
-                                        intersperse (char8 ',') bs ++
-                                        [byteString after]
-    Nothing -> fmtError "syntax error in multi-row template" q []
-
--- Split the input string into three pieces, @before@, @qbits@, and @after@,
--- following this grammar:
---
--- start: ^ before qbits after $
---     before: ([^?]* [^?\w])? 'VALUES' \s*
---     qbits:  '(' \s* '?' \s* (',' \s* '?' \s*)* ')'
---     after:  [^?]*
---
--- \s: [ \t\n\r\f]
--- \w: [A-Z] | [a-z] | [\x80-\xFF] | '_' | '$' | [0-9]
---
--- This would be much more concise with some sort of regex engine.
--- 'formatMany' used to use pcre-light instead of this hand-written parser,
--- but pcre is a hassle to install on Windows.
-parseTemplate :: ByteString -> Maybe (ByteString, ByteString, ByteString)
-parseTemplate template =
-    -- Convert input string to uppercase, to facilitate searching.
-    search $ B.map toUpper_ascii template
-  where
-    -- Search for the next occurrence of "VALUES"
-    search bs =
-        case B.breakSubstring "VALUES" bs of
-            (x, y)
-                -- If "VALUES" is not present in the string, or any '?' characters
-                -- were encountered prior to it, fail.
-                | B.null y || ('?' `B.elem` x)
-               -> Nothing
-
-                -- If "VALUES" is preceded by an identifier character (a.k.a. \w),
-                -- try the next occurrence.
-                | not (B.null x) && isIdent (B.last x)
-               -> search $ B.drop 6 y
-
-                -- Otherwise, we have a legitimate "VALUES" token.
-                | otherwise
-               -> parseQueryBits $ skipSpace $ B.drop 6 y
-
-    -- Parse '(' \s* '?' \s* .  If this doesn't match
-    -- (and we don't consume a '?'), look for another "VALUES".
-    --
-    -- qb points to the open paren (if present), meaning it points to the
-    -- beginning of the "qbits" production described above.  This is why we
-    -- pass it down to finishQueryBits.
-    parseQueryBits qb
-        | Just ('(', skipSpace -> bs1) <- B.uncons qb
-        , Just ('?', skipSpace -> bs2) <- B.uncons bs1
-        = finishQueryBits qb bs2
-        | otherwise
-        = search qb
-
-    -- Parse (',' \s* '?' \s*)* ')' [^?]* .
-    --
-    -- Since we've already consumed at least one '?', there's no turning back.
-    -- The parse has to succeed here, or the whole thing fails
-    -- (because we don't allow '?' to appear outside of the VALUES list).
-    finishQueryBits qb bs0
-        | Just (')', bs1) <- B.uncons bs0
-        = if '?' `B.elem` bs1
-              then Nothing
-              else Just $ slice3 template qb bs1
-        | Just (',', skipSpace -> bs1) <- B.uncons bs0
-        , Just ('?', skipSpace -> bs2) <- B.uncons bs1
-        = finishQueryBits qb bs2
-        | otherwise
-        = Nothing
-
-    -- Slice a string into three pieces, given the start offset of the second
-    -- and third pieces.  Each "offset" is actually a tail of the uppercase
-    -- version of the template string.  Its length is used to infer the offset.
-    --
-    -- It is important to note that we only slice the original template.
-    -- We don't want our all-caps trick messing up the actual query string.
-    slice3 source p1 p2 =
-        (s1, s2, source'')
-      where
-        (s1, source')  = B.splitAt (B.length source - B.length p1) source
-        (s2, source'') = B.splitAt (B.length p1     - B.length p2) source'
-
-    toUpper_ascii c | c >= 'a' && c <= 'z' = toEnum (fromEnum c - 32)
-                    | otherwise            = c
-
-    -- Based on the definition of {ident_cont} in src/backend/parser/scan.l
-    -- in the PostgreSQL source.  No need to check [a-z], since we converted
-    -- the whole string to uppercase.
-    isIdent c = (c >= '0'    && c <= '9')
-             || (c >= 'A'    && c <= 'Z')
-             || (c >= '\x80' && c <= '\xFF')
-             || c == '_'
-             || c == '$'
-
-    -- Based on {space} in scan.l
-    isSpace_ascii c = (c == ' ') || (c >= '\t' && c <= '\r')
-
-    skipSpace = B.dropWhile isSpace_ascii
-
-
-
 buildQuery :: Connection -> Query -> ByteString -> [Action] -> IO Builder
 buildQuery conn q template xs =
     zipParams (split template) <$> mapM (buildAction conn q xs) xs
@@ -303,63 +171,6 @@ execute :: (ToRow q) => Connection -> Query -> q -> IO Int64
 execute conn template qs = do
   result <- exec conn =<< formatQuery conn template qs
   finishExecute conn template result
-
--- | Execute a multi-row @INSERT@, @UPDATE@, or other SQL query that is not
--- expected to return results.
---
--- Returns the number of rows affected.   If the list of parameters is empty,
--- this function will simply return 0 without issuing the query to the backend.
--- If this is not desired, consider using the 'Values' constructor instead.
---
--- Throws 'FormatError' if the query could not be formatted correctly, or
--- a 'SqlError' exception if the backend returns an error.
---
--- For example,  here's a command that inserts two rows into a table
--- with two columns:
---
--- @
--- executeMany c [sql|
---     INSERT INTO sometable VALUES (?,?)
---  |] [(1, \"hello\"),(2, \"world\")]
--- @
---
--- Here's an canonical example of a multi-row update command:
---
--- @
--- executeMany c [sql|
---     UPDATE sometable
---        SET sometable.y = upd.y
---       FROM (VALUES (?,?)) as upd(x,y)
---      WHERE sometable.x = upd.x
---  |] [(1, \"hello\"),(2, \"world\")]
--- @
-
-executeMany :: (ToRow q) => Connection -> Query -> [q] -> IO Int64
-executeMany _ _ [] = return 0
-executeMany conn q qs = do
-  result <- exec conn =<< formatMany conn q qs
-  finishExecute conn q result
-
--- | Execute @INSERT ... RETURNING@, @UPDATE ... RETURNING@, or other SQL
--- query that accepts multi-row input and is expected to return results.
--- Note that it is possible to write
---    @'query' conn "INSERT ... RETURNING ..." ...@
--- in cases where you are only inserting a single row,  and do not need
--- functionality analogous to 'executeMany'.
---
--- If the list of parameters is empty,  this function will simply return @[]@
--- without issuing the query to the backend.   If this is not desired,
--- consider using the 'Values' constructor instead.
---
--- Throws 'FormatError' if the query could not be formatted correctly.
-returning :: (ToRow q, FromRow r) => Connection -> Query -> [q] -> IO [r]
-returning = returningWith fromRow
-
-returningWith :: (ToRow q) => RowParser r -> Connection -> Query -> [q] -> IO [r]
-returningWith _ _ _ [] = return []
-returningWith parser conn q qs = do
-  result <- exec conn =<< formatMany conn q qs
-  finishQueryWith parser conn q result
 
 -- | Perform a @SELECT@ or other SQL query that is expected to return
 -- results. All results are retrieved and converted before this
@@ -839,65 +650,6 @@ ellipsis bs
 --
 -- A row of /n/ query results is represented using an /n/-tuple, so
 -- you should use 'Only' to represent a single-column result.
-
--- $many
---
--- If you know that you have many rows of data to insert into a table,
--- it is much more efficient to perform all the insertions in a single
--- multi-row @INSERT@ statement than individually.
---
--- The 'executeMany' function is intended specifically for helping
--- with multi-row @INSERT@ and @UPDATE@ statements. Its rules for
--- query substitution are different than those for 'execute'.
---
--- What 'executeMany' searches for in your 'Query' template is a
--- single substring of the form:
---
--- > values (?,?,?)
---
--- The rules are as follows:
---
--- * The keyword @VALUES@ is matched case insensitively.
---
--- * There must be no other \"@?@\" characters anywhere in your
---   template.
---
--- * There must be one or more \"@?@\" in the parentheses.
---
--- * Extra white space is fine.
---
--- The last argument to 'executeMany' is a list of parameter
--- tuples. These will be substituted into the query where the @(?,?)@
--- string appears, in a form suitable for use in a multi-row @INSERT@
--- or @UPDATE@.
---
--- Here is an example:
---
--- > executeMany conn
--- >   "insert into users (first_name,last_name) values (?,?)"
--- >   [("Boris","Karloff"),("Ed","Wood")]
---
--- The query that will be executed here will look like this
--- (reformatted for tidiness):
---
--- > insert into users (first_name,last_name) values
--- >   ('Boris','Karloff'),('Ed','Wood')
-
--- $returning
---
--- PostgreSQL supports returning values from data manipulation statements
--- such as @INSERT@ and @UPDATE@.   You can use these statements by
--- using 'query' instead of 'execute'.   For multi-tuple inserts,
--- use 'returning' instead of 'executeMany'.
---
--- For example, were there an auto-incrementing @id@ column and
--- timestamp column @t@ that defaulted to the present time for the
--- @sales@ table, then the following query would insert two new
--- sales records and also return their new @id@s and timestamps.
---
--- > let q = "insert into sales (amount, label) values (?,?) returning id, t"
--- > xs :: [(Int, UTCTime)] <- query conn q (15,"Sawdust")
--- > ys :: [(Int, UTCTime)] <- returning conn q [(20,"Chips"),(300,"Wood")]
 
 -- $result
 --

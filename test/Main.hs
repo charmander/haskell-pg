@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 import Common
 import Database.PostgreSQL.Simple.FromField (FromField)
-import Database.PostgreSQL.Simple.Types(Query(..),Values(..))
+import Database.PostgreSQL.Simple.Types (PGArray (..), Query (..), Values (..))
 import Database.PostgreSQL.Simple.HStore
 import Database.PostgreSQL.Simple.Copy
 import qualified Database.PostgreSQL.Simple.Transaction as ST
@@ -42,7 +42,6 @@ tests :: TestEnv -> TestTree
 tests env = testGroup "tests"
     $ map ($ env)
     [ testBytea
-    , testCase "ExecuteMany"        . testExecuteMany
     , testCase "Fold"               . testFold
     , testCase "Notify"             . testNotify
     , testCase "Serializable"       . testSerializable
@@ -83,24 +82,6 @@ testBytea TestEnv{..} = testGroup "Bytea"
         assertBool "SQL -> Haskell conversion altered the string" $ bs == r
 
     doubleUp = concatMap (\x -> [x, x])
-
-testExecuteMany :: TestEnv -> Assertion
-testExecuteMany TestEnv{..} = do
-    execute_ conn "CREATE TEMPORARY TABLE tmp_executeMany (i INT, t TEXT, b BYTEA)"
-
-    let rows :: [(Int, String, Binary ByteString)]
-        rows = [ (1, "hello", Binary "bye")
-               , (2, "world", Binary "\0\r\t\n")
-               , (3, "?",     Binary "")
-               ]
-
-    count <- executeMany conn "INSERT INTO tmp_executeMany VALUES (?, ?, ?)" rows
-    count @?= fromIntegral (length rows)
-
-    rows' <- query_ conn "SELECT * FROM tmp_executeMany"
-    rows' @?= rows
-
-    return ()
 
 testFold :: TestEnv -> Assertion
 testFold TestEnv{..} = do
@@ -283,11 +264,11 @@ testUnicode :: TestEnv -> Assertion
 testUnicode TestEnv{..} = do
     let q = Query . T.encodeUtf8  -- Handle encoding ourselves to ensure
                                   -- the table gets created correctly.
-    let messages = map Only ["привет","мир"] :: [Only Text]
+    let messages = ["привет", "мир"] :: [Text]
     execute_ conn (q "CREATE TEMPORARY TABLE ру́сский (сообщение TEXT)")
-    executeMany conn "INSERT INTO ру́сский (сообщение) VALUES (?)" messages
+    execute conn "INSERT INTO ру́сский (сообщение) SELECT x FROM UNNEST (?) AS x" (Only (PGArray messages))
     messages' <- query_ conn "SELECT сообщение FROM ру́сский"
-    sort messages @?= sort messages'
+    sort messages @?= sort (map fromOnly messages')
 
 testValues :: TestEnv -> Assertion
 testValues TestEnv{..} = do

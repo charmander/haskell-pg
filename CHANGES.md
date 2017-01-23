@@ -1,6 +1,8 @@
 ### master
   * Removed `In`.
 
+  * Removed `executeMany`.
+
 ### Version 0.5.2.1 (2016-06-29)
   * Bumped the lower bound for `base` to 4.6.   Thanks to Herbert
     Valerio Riedel for reporting the issue.

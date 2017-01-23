@@ -168,9 +168,7 @@ infixr 3 :.
 newtype Savepoint = Savepoint Query
     deriving (Eq, Ord, Show, Read, Typeable)
 
--- | Represents a @VALUES@ table literal,  usable as an alternative to
---   'Database.PostgreSQL.Simple.executeMany' and
---   'Database.PostgreSQL.Simple.returning'.  The main advantage is that
+-- | Represents a @VALUES@ table literal.  The main advantage is that
 --   you can parametrize more than just a single @VALUES@ expression.
 --   For example,  here's a query to insert a thing into one table
 --   and some attributes of that thing into another,   returning the
@@ -199,11 +197,6 @@ newtype Savepoint = Savepoint Query
 --   When the list of attributes is empty,  the second parameter expands to:
 --
 -- > (VALUES (null::"int4",null::"text") LIMIT 0)
---
---   By contrast, @executeMany@ and @returning@ don't issue the query
---   in the empty case, and simply return @0@ and @[]@ respectively.
---   This behavior is usually correct given their intended use cases,
---   but would certainly be wrong in the example above.
 --
 --   The first argument is a list of postgresql type names.  Because this
 --   is turned into a properly quoted identifier,  the type name is case

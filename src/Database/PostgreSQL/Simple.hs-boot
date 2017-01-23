@@ -5,7 +5,6 @@ module Database.PostgreSQL.Simple
      , query_
      , execute
      , execute_
-     , executeMany
      ) where
 
 import Data.Int(Int64)
@@ -19,5 +18,3 @@ query :: (ToRow q, FromRow r) => Connection -> Query -> q -> IO [r]
 query_ :: FromRow r => Connection -> Query -> IO [r]
 
 execute :: ToRow q => Connection -> Query -> q -> IO Int64
-
-executeMany :: ToRow q => Connection -> Query -> [q] -> IO Int64

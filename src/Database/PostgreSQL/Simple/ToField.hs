@@ -103,13 +103,6 @@ instance (ToField a) => ToField (Maybe a) where
     toField (Just a) = toField a
     {-# INLINE toField #-}
 
-instance (ToField a) => ToField (In [a]) where
-    toField (In []) = Plain $ byteString "(null)"
-    toField (In xs) = Many $
-        Plain (char8 '(') :
-        (intersperse (Plain (char8 ',')) . map toField $ xs) ++
-        [Plain (char8 ')')]
-
 renderNull :: Action
 renderNull = Plain (byteString "null")
 

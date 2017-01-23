@@ -18,7 +18,6 @@ module Database.PostgreSQL.Simple.Types
       Null(..)
     , Default(..)
     , Only(..)
-    , In(..)
     , Binary(..)
     , Identifier(..)
     , QualifiedIdentifier(..)
@@ -109,54 +108,6 @@ instance Monoid Query where
 newtype Only a = Only {
       fromOnly :: a
     } deriving (Eq, Ord, Read, Show, Typeable, Functor)
-
--- | Wrap a list of values for use in an @IN@ clause.  Replaces a
--- single \"@?@\" character with a parenthesized list of rendered
--- values.
---
--- Example:
---
--- > query c "select * from whatever where id in ?" (Only (In [3,4,5]))
---
--- Note that @In []@ expands to @(null)@, which works as expected in
--- the query above, but evaluates to the logical null value on every
--- row instead of @TRUE@.  This means that changing the query above
--- to @... id NOT in ?@ and supplying the empty list as the parameter
--- returns zero rows, instead of all of them as one would expect.
---
--- Since postgresql doesn't seem to provide a syntax for actually specifying
--- an empty list,  which could solve this completely,  there are two
--- workarounds particularly worth mentioning,  namely:
---
--- 1.  Use postgresql-simple's 'Values' type instead,  which can handle the
---     empty case correctly.  Note however that while specifying the
---     postgresql type @"int4"@ is mandatory in the empty case,  specifying
---     the haskell type @Values (Only Int)@ would not normally be needed in
---     realistic use cases.
---
---     > query c "select * from whatever where id not in ?"
---     >         (Only (Values ["int4"] [] :: Values (Only Int)))
---
---
--- 2.  Use sql's @COALESCE@ operator to turn a logical @null@ into the correct
---     boolean.  Note however that the correct boolean depends on the use
---     case:
---
---     > query c "select * from whatever where coalesce(id NOT in ?, TRUE)"
---     >         (Only (In [] :: In [Int]))
---
---     > query c "select * from whatever where coalesce(id IN ?, FALSE)"
---     >         (Only (In [] :: In [Int]))
---
---     Note that at as of PostgreSQL 9.4,  the query planner cannot see inside
---     the @COALESCE@ operator,  so if you have an index on @id@ then you
---     probably don't want to write the last example with @COALESCE@,  which
---     would result in a table scan.   There are further caveats if @id@ can
---     be null or you want null treated sensibly as a component of @IN@ or
---     @NOT IN@.
-
-newtype In a = In a
-    deriving (Eq, Ord, Read, Show, Typeable, Functor)
 
 -- | Wrap binary data for use as a @bytea@ value.
 newtype Binary a = Binary {fromBinary :: a}

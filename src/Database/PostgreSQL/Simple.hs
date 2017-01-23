@@ -36,9 +36,6 @@ module Database.PostgreSQL.Simple
     -- ** Substituting a single parameter
     -- $only_param
 
-    -- ** Representing a list of values
-    -- $in
-
     -- ** Modifying multiple rows at once
     -- $many
 
@@ -59,7 +56,6 @@ module Database.PostgreSQL.Simple
     , Query
     , ToRow
     , FromRow
-    , In(..)
     , Binary(..)
     , Only(..)
     , (:.)(..)
@@ -134,7 +130,7 @@ import           Database.PostgreSQL.Simple.Ok
 import           Database.PostgreSQL.Simple.ToField (Action(..))
 import           Database.PostgreSQL.Simple.ToRow (ToRow(..))
 import           Database.PostgreSQL.Simple.Types
-                   ( Binary(..), In(..), Only(..), Query(..), (:.)(..) )
+                   ( Binary(..), Only(..), Query(..), (:.)(..) )
 import           Database.PostgreSQL.Simple.Internal as Base
 import           Database.PostgreSQL.Simple.Transaction
 import           Database.PostgreSQL.Simple.TypeInfo
@@ -843,28 +839,6 @@ ellipsis bs
 --
 -- A row of /n/ query results is represented using an /n/-tuple, so
 -- you should use 'Only' to represent a single-column result.
-
--- $in
---
--- Suppose you want to write a query using an @IN@ clause:
---
--- > select * from users where first_name in ('Anna', 'Boris', 'Carla')
---
--- In such cases, it's common for both the elements and length of the
--- list after the @IN@ keyword to vary from query to query.
---
--- To address this case, use the 'In' type wrapper, and use a single
--- \"@?@\" character to represent the list.  Omit the parentheses
--- around the list; these will be added for you.
---
--- Here's an example:
---
--- > query conn "select * from users where first_name in ?" $
--- >       Only $ In ["Anna", "Boris", "Carla"]
---
--- If your 'In'-wrapped list is empty, the string @\"(null)\"@ will be
--- substituted instead, to ensure that your clause remains
--- syntactically valid.
 
 -- $many
 --

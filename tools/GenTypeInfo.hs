@@ -36,7 +36,7 @@ import           Control.Exception(bracket)
 import           Database.PostgreSQL.Simple
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.Ok
-import           Database.PostgreSQL.Simple.Types(Oid(..))
+import           Database.PostgreSQL.Simple.Types(Oid(..), PGArray(..))
 import           Database.PostgreSQL.Simple.SqlQQ
 import qualified Data.ByteString.Char8 as B
 import           Data.ByteString(ByteString)
@@ -66,7 +66,7 @@ data TypeInfo = TypeInfo
     , rngsubtype  :: Maybe Oid
     }
 
-instance FromRow TypeInfo where 
+instance FromRow TypeInfo where
     fromRow = TypeInfo <$> field <*> field <*> field <*> field <*> field <*> field
 
 type NameMap   = Map.Map B.ByteString TypeInfo
@@ -197,21 +197,18 @@ int8range
 _int8range
 |]
 
-instance IsString Blaze.Builder where
-   fromString = Blaze.fromByteString . fromString
-
 connectionString = "dbname=postgres"
 
 withPostgreSQL = bracket (connectPostgreSQL connectionString) close
 
 getTypeInfos :: TypeNames -> IO (OidMap, NameMap)
 getTypeInfos typnames = withPostgreSQL $ \conn -> do
-    infos <- query conn [sql| 
-         WITH types AS 
+    infos <- query conn [sql|
+         WITH types AS
             (SELECT oid, typcategory, typdelim, typname, typelem
-               FROM pg_type WHERE typname IN ?)
+               FROM pg_type WHERE typname = ANY (?))
             SELECT types.*, rngsubtype FROM types LEFT JOIN pg_range ON oid = rngtypid
-      |] (Only (In (sort (map pg typnames))))
+      |] (Only (PGArray (sort (map pg typnames))))
     loop conn (oidMap infos) (nameMap infos) infos
   where
     oidMap  = Map.fromList . map (typoid  &&& id)
@@ -225,12 +222,12 @@ getTypeInfos typnames = withPostgreSQL $ \conn -> do
         []    -> return (oids, names)
         (_:_) -> do
            infos' <- query conn [sql|
-             WITH types AS 
+             WITH types AS
                (SELECT oid, typcategory, typdelim, typname, typelem
-                  FROM pg_type WHERE oid IN ?)
-               SELECT types.*, rngsubtype 
+                  FROM pg_type WHERE oid = ANY (?))
+               SELECT types.*, rngsubtype
                  FROM types LEFT JOIN pg_range ON oid = rngtypid
-             |] (Only (In (sort unknowns)))
+             |] (Only (PGArray (sort unknowns)))
            let oids'  = oids  `Map.union` oidMap  infos'
                names' = names `Map.union` nameMap infos'
            loop conn oids' names' infos'
